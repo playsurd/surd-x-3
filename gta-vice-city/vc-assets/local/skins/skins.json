@@ -1,0 +1,90 @@
+{
+  "template": "models/gta3.img/player.txd",
+  "bytes": 45056,
+  "skins": [
+    {
+      "id": "a-r-m-y",
+      "name": "A R M Y",
+      "file": "a-r-m-y.txd",
+      "bmp": "a-r-m-y.bmp",
+      "preview": "previews/a-r-m-y.png"
+    },
+    {
+      "id": "bangladeshi-boy",
+      "name": "Bangladeshi Boy",
+      "file": "bangladeshi-boy.txd",
+      "bmp": "bangladeshi-boy.bmp",
+      "preview": "previews/bangladeshi-boy.png"
+    },
+    {
+      "id": "black-style",
+      "name": "Black Style",
+      "file": "black-style.txd",
+      "bmp": "black-style.bmp",
+      "preview": "previews/black-style.png"
+    },
+    {
+      "id": "commando",
+      "name": "COMMANDO",
+      "file": "commando.txd",
+      "bmp": "commando.bmp",
+      "preview": "previews/commando.png"
+    },
+    {
+      "id": "carl-jonson",
+      "name": "Carl Jonson",
+      "file": "carl-jonson.txd",
+      "bmp": "carl-jonson.bmp",
+      "preview": "previews/carl-jonson.png"
+    },
+    {
+      "id": "gta-3-player",
+      "name": "GTA 3 Player",
+      "file": "gta-3-player.txd",
+      "bmp": "gta-3-player.bmp",
+      "preview": "previews/gta-3-player.png"
+    },
+    {
+      "id": "latest",
+      "name": "LATEST",
+      "file": "latest.txd",
+      "bmp": "latest.bmp",
+      "preview": "previews/latest.png"
+    },
+    {
+      "id": "neo",
+      "name": "NEO",
+      "file": "neo.txd",
+      "bmp": "neo.bmp",
+      "preview": "previews/neo.png"
+    },
+    {
+      "id": "original",
+      "name": "ORIGINAL",
+      "file": "original.txd",
+      "bmp": "original.bmp",
+      "preview": "previews/original.png"
+    },
+    {
+      "id": "r-a-b",
+      "name": "R A B",
+      "file": "r-a-b.txd",
+      "bmp": "r-a-b.bmp",
+      "preview": "previews/r-a-b.png"
+    },
+    {
+      "id": "smb",
+      "name": "SMB",
+      "file": "smb.txd",
+      "bmp": "smb.bmp",
+      "preview": "previews/smb.png"
+    },
+    {
+      "id": "smart",
+      "name": "smart",
+      "file": "smart.txd",
+      "bmp": "smart.bmp",
+      "preview": "previews/smart.png"
+    }
+  ]
+}
