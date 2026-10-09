@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<base href="https://cdn.jsdelivr.net/gh/playsurd/surd-x-3@main/cs-surf/">
+<script data-surd="1">(function () {
+  var W = window;
+  var unityTarget = null;
+  function tellUnity(methods, arg) {
+    var inst = W.__surdUnity || W.unityInstance || W.gameInstance;
+    if (!inst || !inst.SendMessage || !unityTarget) return;
+    for (var i = 0; i < methods.length; i++) {
+      try { arg === undefined ? inst.SendMessage(unityTarget, methods[i]) : inst.SendMessage(unityTarget, methods[i], arg); }
+      catch (e) {  }
+    }
+  }
+  if (typeof W.initPokiBridge !== 'function') {
+    W.initPokiBridge = function (name) { unityTarget = name || unityTarget; };
+  }
+  if (typeof W.commercialBreak !== 'function') {
+    W.commercialBreak = function () { setTimeout(function () { tellUnity(['CommercialBreakComplete', 'commercialBreakComplete']); }, 0); };
+  }
+  if (typeof W.rewardedBreak !== 'function') {
+    W.rewardedBreak = function () { setTimeout(function () { tellUnity(['RewardedBreakComplete', 'rewardedBreakComplete'], 'false'); }, 0); };
+  }
+  var resolved = function () { return Promise.resolve(); };
+  if (!W.PokiSDK) {
+    W.PokiSDK = {
+      init: resolved, initPokiBridge: function () {}, setDebug: function () {},
+      gameLoadingStart: function () {}, gameLoadingFinished: function () {},
+      gameLoadingProgress: function () {},
+      gameplayStart: function () {}, gameplayStop: function () {},
+      commercialBreak: resolved, rewardedBreak: function () { return Promise.resolve(false); },
+      happyTime: function () {}, customEvent: function () {}, captureError: function () {},
+      isAdBlocked: function () { return false; }, shareableURL: function () { return Promise.resolve(location.href); },
+      getURLParam: function (k) { try { return new URL(location.href).searchParams.get(k) || ''; } catch (e) { return ''; } },
+    };
+  }
+  if (!W.YaGames) {
+    var yPlayer = {
+      getName: function () { return 'player'; }, getUniqueID: function () { return 'local'; },
+      getData: function () { return Promise.resolve({}); }, setData: resolved,
+      getStats: function () { return Promise.resolve({}); }, setStats: resolved, incrementStats: resolved,
+      getMode: function () { return 'lite'; }, getPhoto: function () { return ''; },
+    };
+    var yLeaderboards = {
+      setLeaderboardScore: resolved,
+      getLeaderboardEntries: function () { return Promise.resolve({ entries: [] }); },
+      getLeaderboardPlayerEntry: function () { return Promise.reject(new Error('no entry')); },
+      getLeaderboardDescription: function () { return Promise.resolve({}); },
+    };
+    var ySdk = {
+      adv: {
+        showFullscreenAdv: function (o) { var c = o && o.callbacks; if (c && c.onClose) setTimeout(function () { c.onClose(false); }, 0); },
+        showRewardedVideo: function (o) { var c = o && o.callbacks; if (c && c.onClose) setTimeout(function () { c.onClose(); }, 0); },
+        getBannerAdvStatus: function () { return Promise.resolve({ stickyAdvIsShowing: false }); },
+      },
+      getPlayer: function () { return Promise.resolve(yPlayer); },
+      getPayments: function () { return Promise.resolve({
+        getCatalog: function () { return Promise.resolve([]); },
+        getPurchases: function () { return Promise.resolve([]); },
+        purchase: function () { return Promise.reject(new Error('payments unavailable')); },
+        consumePurchase: resolved,
+      }); },
+      getFlags: function () { return Promise.resolve({}); },
+      getStorage: function () { return Promise.resolve(window.localStorage); },
+      clipboard: { writeText: resolved },
+      shortcut: { canShowPrompt: function () { return Promise.resolve({ canShow: false }); }, showPrompt: function () { return Promise.resolve({ outcome: 'rejected' }); } },
+      feedback: { canReview: function () { return Promise.resolve({ value: false }); }, requestReview: function () { return Promise.resolve({ feedbackSent: false }); } },
+      getLeaderboards: function () { return Promise.resolve(yLeaderboards); },
+      features: { LoadingAPI: { ready: function () {} } },
+      screen: { fullscreen: { request: resolved, exit: resolved } },
+      isAvailableMethod: function () { return Promise.resolve(false); },
+      environment: { i18n: { lang: 'en' }, app: { id: 'local' } },
+      deviceInfo: { isDesktop: function () { return true; }, isMobile: function () { return false; },
+                    isTablet: function () { return false; }, isTV: function () { return false; },
+                    type: 'desktop' },
+    };
+    W.YaGames = { init: function () { return Promise.resolve(ySdk); } };
+    W.ysdk = ySdk;
+  }
+  if (!W.ytgame) {
+    var ytNoop = function () {};
+    W.ytgame = {
+      IN_PLAYABLES_ENV: false,
+      game: { firstFrameReady: ytNoop, gameReady: ytNoop, loadData: function () { return Promise.resolve(''); },
+              saveData: function () { return Promise.resolve(); }, isPaused: function () { return false; } },
+      system: { getLanguage: function () { return 'en'; }, isAudioEnabled: function () { return true; },
+                onAudioEnabledChange: ytNoop, onPause: ytNoop, onResume: ytNoop },
+      health: { logError: ytNoop, logWarning: ytNoop },
+      engagement: { sendScore: function () { return Promise.resolve(); } },
+      ads: { requestInterstitialAd: function () { return Promise.resolve(); } },
+    };
+  }
+  if (typeof document !== 'undefined' && document.xURL === undefined) {
+    try { document.xURL = 'https://poki.com/'; } catch (e) {  }
+  }
+  if (!W.YYGGames) {
+    var yyAds = function (o) {
+      o = o || {};
+      var step = function (fn) { if (typeof fn === 'function') setTimeout(fn, 0); };
+      step(o.beforeShowAd);
+      setTimeout(function () { step(o.afterShowAd); step(o.rewardDismissed); }, 1);
+    };
+    W.YYGGames = {
+      startup: function (o) { if (o && typeof o.complete === 'function') setTimeout(o.complete, 0); },
+      startupByYad: function () {}, showSplash: function () {},
+      showInterstitial: yyAds, showReward: yyAds,
+      canShowReward: function () { return false; },
+      getAdPlatformType: function () { return 'none'; },
+      getForgames: function () { return Promise.resolve([]); },
+      navigate: function () {},
+      onVisibilitychange: function () {},
+    };
+  }
+  if (!W.GamePix) {
+    W.GamePix = { init: function () {}, ping: function () {}, gameLoadingStart: function () {}, gameLoadingFinished: function () {},
+                  interstitialAd: resolved, rewardAd: function () { return Promise.resolve(false); }, happyMoment: function () {} };
+  }
+  if (!W.CrazyGames) {
+    var noop = function () {};
+    W.CrazyGames = { SDK: {
+      init: resolved, game: { gameplayStart: noop, gameplayStop: noop, loadingStart: noop, loadingStop: noop, happytime: noop },
+      ad: { requestAd: function (t, cb) { if (cb && cb.adFinished) cb.adFinished(); }, hasAdblock: function () { return Promise.resolve(false); } },
+      user: { getUser: function () { return Promise.resolve(null); } },
+      banner: { requestBanner: resolved, clearAllBanners: noop },
+    } };
+  }
+})();
+if (typeof window !== 'undefined') {
+  if (typeof window.environmentData === 'undefined') window.environmentData = 'NO_DATA';
+  if (typeof window.nowFullAdOpen === 'undefined') window.nowFullAdOpen = false;
+}
+try {
+  var parentWin = window.parent;
+  if (parentWin && parentWin !== window) {
+    if (typeof parentWin.maeExportApis_ !== 'function') parentWin.maeExportApis_ = function () {};
+  }
+} catch (e) {  }
+if(typeof window.UnityProgress!=="function")window.UnityProgress=function(){this.SetMessage=function(){};this.SetProgress=function(){};this.Clear=function(){};};
+window.alert=function(){};window.confirm=function(){return false;};window.prompt=function(){return null;};
+(function(){
+    /* DEAD HOSTS, blocked for a different reason than the ad networks below.
+     *
+     * Sixteen files across the catalogue live on hosts that no longer answer. Vendoring could not
+     * save them (nothing to download, and none are in the Wayback Machine), but every one turned
+     * out to be inessential once looked at: an ad SWF (bbplayer), a portal logo (kizi), portal
+     * SDKs (gamemix, gmsdk), a sitelock check (pegasgames' "wheely7sec.swf" — wheely-7 ships its
+     * real game in _vendor), cosmetic images, and duplicates of files the game already has
+     * locally (both spongebob ports ship their own flambe.js). Left alone, each one is a request
+     * that hangs until it times out; blocked, it fails instantly and the game gets on with it. */
+    var DEAD = /(bbplayer\.net|cdn0\.kizi\.com|gmapi\.gamemix\.com|r3tq6l1\/gmsdk|candystand\.com|eags\.us|iep-esy\.ir|pegasgames\.com|ngames365\.github\.io|yurivish\.com|chicken\.royalredeemerlutheranschool\.org|marketjs-us\/en\/patch|cdn\.jsdelivr\.net\/discount\.json)/i;
+    var BAD = /(doubleclick\.net|googlesyndication\.com|googleadservices\.com|googleads\.g\.doubleclick\.net|adtrafficquality\.google|2mdn\.net|imasdk\.googleapis\.com|adsbygoogle|google-analytics\.com|googletagmanager\.com|gstatic\.com\/firebasejs|gamemonetize\.com|fliplineads\.com|cpmstar\.com|ngads\.com|adinplay\.com|mochibot\.com|mochiads\.com|gamedistribution\.com|msgrt\.gamedistribution\.com|azerioncircle\.com|gamemonkey\.org|gameanalytics\.com|gamedock\.io|enjoy4fun\.com|gamebridge\.games|gamearter\.com|poki\.io|famobi\.com|softgames\.de|analytics\.shapez\.io|scorecardresearch\.com|moatads\.com|amazon-adsystem\.com|criteo|pubmatic|rubiconproject|adnxs\.com|casalemedia|smartadserver|taboola|outbrain|hotjar\.com|mixpanel|clarity\.ms|rudderlabs\.com|analytics\.tiktok\.com|connect\.facebook\.net|yandex\.ru\/metrika|mc\.yandex|cloud\.unity3d\.com|pushalert\.co|quizvana\.com|serviceclic\.com|atpnd\.com|r9x\.in|adsgram\.ai)/i;
+    function bad(u){ try { var t = String(u); return BAD.test(t) || DEAD.test(t); } catch(e){ return false; } }
+    /* HOST-ABSOLUTE PATHS: "/version.json", "/audio/x.flac".
+     *
+     * A leading slash ignores <base> completely and resolves against the ORIGIN, which for us
+     * is the site (or an opaque blob origin) and never holds game assets — so every such
+     * request is a guaranteed 404. 2048-merge-run asked for /version.json, /fileconfig.json
+     * and every one of its scene files this way and showed a black screen with nothing but
+     * "Script error." to go on; a-dark-room does the same with /audio/*.flac.
+     *
+     * Since no host-absolute path can ever be correct here, point them all at the game's own
+     * base. This is a rewrite rather than a refusal: the files exist, just one level up.
+     * Protocol-relative "//host/x" is a different thing (a real remote host) and is left to
+     * the denylist above. */
+    /* Read the base LAZILY. This guard is deliberately installed before the manifest script
+     * (that order is load-bearing — moving SURD_GAME ahead of the prelude once stopped this
+     * very game from rendering at all), so at install time there is no base to capture. */
+    function gbase(){ try { return (window.SURD_GAME && window.SURD_GAME.base) || ''; } catch(e){ return ''; } }
+    /* A file we downloaded from a third-party host and now ship ourselves. Checked before
+     * anything else: this is what stops a game depending on someone else's server staying up,
+     * and it works even when the game builds the URL at runtime. */
+    function vendored(u){
+      try {
+        var M = window.SURD_GAME, map = M && M.ext;
+        if (!map || typeof u !== 'string') return null;
+        var q = u.split('#')[0];
+        if (map[q]) return String(M.base).replace(/\/?$/, '/') + map[q];
+        var noq = q.split('?')[0];
+        if (map[noq]) return String(M.base).replace(/\/?$/, '/') + map[noq];
+        return null;
+      } catch(e){ return null; }
+    }
+    function rebase(u){
+      try {
+        if (typeof u !== 'string' || !u) return u;
+        var v = vendored(u); if (v) return v;
+        var B = gbase(); if (!B) return u;
+        B = B.replace(/\/?$/, '/');
+        if (u.indexOf(B) === 0) return u;                        // already where it belongs
+        /* Never touch OUR OWN plumbing. The runtime and its adapters live at a different path
+         * (and in production a different origin), and rebasing them points the loader at the
+         * game's asset directory, where no adapter exists. */
+        var RT = '';
+        try { RT = (window.SURD_GAME && window.SURD_GAME.runtime) || ''; } catch(e){}
+        if (RT && u.indexOf(RT) === 0) return u;
+        if (u.indexOf('/_rt/') >= 0 || u.indexOf('surd-runtime') >= 0) return u;
+        /* A bare "/" (or "/?x") has NO path to rebase, and rewriting it produced a request for
+         * the base DIRECTORY, which 404s and shows up in the log as
+         * "failed to load .../suika-game/". Leave those alone. */
+        if (u.charAt(0) === '/' && u.charAt(1) !== '/') {
+          var rest = u.slice(1);
+          return rest && rest.charAt(0) !== '?' && rest.charAt(0) !== '#' ? B + rest : u;
+        }
+        /* An engine that builds its own absolute URLs from location, rather than letting the
+         * browser resolve a relative path, lands on the SITE origin — which holds no game
+         * assets either. 2048-merge-run (LayaAir) asks for "<origin>/version.json" outright,
+         * so matching only a leading slash was not enough. Our origin is never a legitimate
+         * place for a game to fetch from, so the same redirect applies. */
+        var o = location.origin;
+        if (o && o !== 'null' && u.indexOf(o + '/') === 0) return B + u.slice(o.length + 1);
+        return u;
+      } catch(e){ return u; }
+    }
+    var of = window.fetch;
+    if (of) window.fetch = function(i, o){
+      var u = (i && i.url) ? i.url : i;
+      /* 204 forbids a body, and passing one throws in Firefox ("Response body is given with a
+       * null body status") — INSIDE the game's own fetch call, which is exactly what this branch
+       * exists to protect (papa-burgeria). Status 200 with an empty body is accepted everywhere
+       * and reads to the caller as "nothing here", which is what we want to say. */
+      if (bad(u)) return Promise.resolve(new Response('', {status:200}));
+      if (typeof i === 'string') { var r = rebase(i); if (r !== i) return of.call(this, r, o); }
+      return of.apply(this, arguments);
+    };
+    var oo = window.XMLHttpRequest && window.XMLHttpRequest.prototype.open;
+    if (oo) window.XMLHttpRequest.prototype.open = function(m, u){
+      if (bad(u)) { arguments[1] = 'data:text/plain,'; }
+      else if (typeof u === 'string') { arguments[1] = rebase(u); }
+      return oo.apply(this, arguments);
+    };
+    if (navigator.sendBeacon) { var ob = navigator.sendBeacon.bind(navigator);
+      navigator.sendBeacon = function(u, d){ return bad(u) ? true : ob(u, d); }; }
+    var OW = window.WebSocket;
+    if (OW) window.WebSocket = function(u, p){
+      if (bad(u)) u = 'ws://127.0.0.1:1';
+      return p === undefined ? new OW(u) : new OW(u, p);
+    };
+    /* setAttribute('src', …) bypasses the property setter patched below, and several ad
+     * tags use exactly that form (moto-x3m still reached googlesyndication until this). */
+    try {
+      var osa = Element.prototype.setAttribute;
+      Element.prototype.setAttribute = function(n, v){
+        if (n && /^(src|href|data)$/i.test(n)) {
+          if (bad(v)) return;
+          /* Same host-absolute problem, reached through an attribute: an <img> or <audio>
+           * given "/audio/x.flac" resolves against the origin and 404s. */
+          if (typeof v === 'string') arguments[1] = rebase(v);
+        }
+        return osa.apply(this, arguments);
+      };
+    } catch(e){}
+    /* Element src= is how most ad tags actually load. */
+    try {
+      ['HTMLImageElement','HTMLScriptElement','HTMLIFrameElement','HTMLAudioElement','HTMLVideoElement','HTMLSourceElement'].forEach(function(k){
+        var P = window[k] && window[k].prototype; if (!P) return;
+        var d = Object.getOwnPropertyDescriptor(P, 'src'); if (!d || !d.set) return;
+        Object.defineProperty(P, 'src', {
+          configurable: true, enumerable: d.enumerable, get: d.get,
+          set: function(v){
+            if (bad(v)) return;
+            var t = typeof v === 'string' ? rebase(v) : v;
+            /* CORS ON OUR OWN ASSETS — not politeness, a hard requirement.
+             *
+             * WebGL refuses to upload a texture from an image fetched cross-origin without
+             * CORS: the canvas would be tainted, so it throws "SecurityError: The operation is
+             * insecure" inside uploadTexture and the game shows a grey screen with everything
+             * apparently loaded (stair-race-3d, PlayCanvas). Our assets live on another origin
+             * by definition — the page is a blob, the files are on the CDN — so every engine
+             * that loads textures through <img> hits this.
+             *
+             * Scoped to OUR hosts and to relative URLs (which resolve against our base through
+             * <base>): jsDelivr and raw both send Access-Control-Allow-Origin: *, so requesting
+             * CORS always succeeds there. Setting it on a third-party host that does NOT send
+             * the header would turn a working image into a failed one, so those are left alone.
+             *
+             * Scripts get the same treatment for a different reason: without crossorigin an
+             * error inside an engine-injected script arrives as the bare, useless
+             * "Script error." with no file or line (2048-merge-run's laya.core.min.js). */
+            try {
+              var ours = typeof t === 'string' && (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(t)
+                || t.indexOf(gbase()) === 0
+                || /^https:\/\/(cdn\.jsdelivr\.net|raw\.githubusercontent\.com)\//.test(t));
+              if (ours && !this.crossOrigin) this.crossOrigin = 'anonymous';
+            } catch(e){}
+            return d.set.call(this, t);
+          }
+        });
+      });
+    } catch(e){}
+  })();</script>
+<script data-surd="1">window.SURD_GAME={"id":"cs-surf","engine":"generic","base":"https://cdn.jsdelivr.net/gh/playsurd/surd-x-3@main/cs-surf/","runtime":"https://cdn.jsdelivr.net/gh/playsurd/surd-runtime@main/va60b10c908/","files":{},"config":{}};</script>
+<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/gh/playsurd/surd-runtime@main/va60b10c908/runtime.js"></script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#394547">
+  <meta name="description" content="Classic Counter-Strike surfing in your browser. Fifteen maps, Source-style movement, saved times, and global leaderboards.">
+  <link rel="canonical" href="https://surfd.net/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Surfd">
+  <meta property="og:title" content="Surfd — Classic surf in your browser">
+  <meta property="og:description" content="Fifteen classic maps. Source-style movement. Saved times and global leaderboards.">
+  <meta property="og:url" content="https://surfd.net/">
+  <meta property="og:image" content="https://surfd.net/social/surfd-card-v2.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1733">
+  <meta property="og:image:height" content="907">
+  <meta property="og:image:alt" content="SURFD — Classic surf. In your browser. Simple grey surf ramps and angular snowy rocks on a dark slate background.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Surfd — Classic surf in your browser">
+  <meta name="twitter:description" content="Fifteen classic maps. Source-style movement. Saved times and global leaderboards.">
+  <meta name="twitter:image" content="https://surfd.net/social/surfd-card-v2.png">
+  <meta name="twitter:image:alt" content="SURFD — Classic surf. In your browser. Simple grey surf ramps and angular snowy rocks on a dark slate background.">
+  <title>Surfd — Classic surf</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%233e4637'/%3E%3Cpath d='M4 24L16 6L28 24Z' fill='%23b9cbb0'/%3E%3C/svg%3E">
+  <script>(function(){["replaceState","pushState"].forEach(function(k){var o=history[k];history[k]=function(){try{return o.apply(history,arguments)}catch(e){}}})})();</script>
+<script crossorigin="anonymous" type="module" crossorigin src="assets/game-BLXdZRZM.js"></script>
+  <link rel="modulepreload" crossorigin href="assets/email-auth-9VgsY3Lt.js">
+  <link rel="stylesheet" crossorigin href="assets/game-jDJOe873.css">
+</head>
+<body>
+  <canvas id="game" aria-label="surf_boreas game"></canvas>
+  <div id="hud">
+    <div class="server-info"><span id="map-name">surf_boreas</span><small>66 tick <span class="hud-separator">/</span> Source-style surf <span id="fps" hidden></span></small></div>
+    <div class="top-right"><span id="mode">NORMAL + AUTO BHOP</span><small id="best">Personal best: —</small></div>
+    <div class="route" aria-label="Course progress"><span id="route-start" class="active">Start</span><span id="route-cp1">CP 1</span><span id="route-cp2">CP 2</span><span id="route-finish">Finish</span></div>
+    <div id="crosshair" aria-hidden="true"></div>
+    <div id="telemetry"><div id="run-time">00:00.000</div><div class="speed-line"><strong id="speed">0</strong><span> units/s</span></div><div id="run-status">In start zone</div><div id="section"></div><div id="ranked-run-status" role="status"></div></div>
+    <div id="center-speed-hud" hidden aria-label="Centre speed"><strong id="center-speed">0</strong><small>units/s</small></div>
+    <section id="split-comparison" hidden aria-label="Checkpoint comparison"><span id="split-comparison-label"></span><div><span>PB <strong id="split-pb">—</strong></span><span>WR <strong id="split-wr">—</strong></span></div></section>
+    <div id="keys" aria-hidden="true"><span data-key="w">W</span><div><span data-key="a">A</span><span data-key="s">S</span><span data-key="d">D</span></div></div>
+    <div id="toast" role="status"></div>
+    <div class="bottom-right" id="shortcut-hint">R restart &nbsp; Esc menu</div>
+    <div id="turn-speed-hud" hidden></div>
+    <pre id="diagnostics" hidden></pre>
+  </div>
+
+  <div id="menu" class="screen lobby-mode">
+    <section class="main-menu" aria-labelledby="menu-title">
+      <div class="game-title"><svg class="surfd-mark" viewBox="0 0 64 48" aria-hidden="true"><path d="M4 36 27 10h16L20 36Zm21 0L48 10h12L37 36Z" fill="currentColor"/><path d="M4 44h56" stroke="currentColor" stroke-width="2"/></svg><span id="brand-title">surfd<span class="brand-period">.</span></span><small>Surf the web.</small></div>
+      <div class="menu-map">
+        <p class="menu-eyebrow">Current map</p>
+        <h1 id="menu-title">surf_boreas</h1>
+        <div class="map-credit">by Syncronyze · Linear · Tier 1 · 2 checkpoints</div>
+      </div>
+      <nav class="menu-actions" aria-label="Game menu">
+        <button id="home" class="lobby-nav-current" aria-current="page">Play surf <span aria-hidden="true">›</span></button>
+        <button id="play" class="button-primary" disabled>Loading map…</button>
+        <div class="pause-play-options" data-play-options></div>
+        <button id="maps">Change map</button>
+        <button id="options">Settings</button>
+        <button id="restart" class="menu-secondary">Restart run</button>
+        <button id="watch" class="menu-secondary">Watch route</button>
+        <button id="lab" class="menu-secondary">Practice facility</button>
+      </nav>
+      <button id="client-resume" class="button-primary" hidden>Return to game <span aria-hidden="true">↗</span></button>
+      <div id="menu-run" hidden><strong id="menu-run-time"></strong><small id="menu-run-status"></small></div>
+      <div id="practice-stations" hidden><label for="station">Practice station</label><select id="station"></select><button id="visit-station">Go to station</button></div>
+      <div class="lobby-sidebar-note"><span class="connection-dot" aria-hidden="true"></span> Free to play. No download.<small>Desktop · Keyboard &amp; mouse</small></div>
+      <div class="menu-status-group"><p id="menu-status" role="status">Loading the map…</p></div>
+      <details class="quick-guide">
+        <summary>How to surf <span aria-hidden="true">+</span></summary>
+        <div class="guide-body">
+          <div id="move-hint">W A S D — move / strafe</div>
+          <div id="jump-hint">Space / Wheel down — jump</div>
+          <div id="duck-hint">Shift — duck</div>
+          <div>Mouse — look &nbsp; Esc — menu</div>
+          <p>On a ramp, release W and hold the strafe key toward the face. Turn the mouse gently to shape your line.</p>
+          <p><span class="zone-key">Green</span> is the start. <span class="zone-key zone-finish">Gold</span> is the finish.</p>
+        </div>
+      </details>
+      <footer class="menu-links">
+        <a class="reference-link" href="/reference.html" target="_blank" rel="noopener">Notes &amp; credits</a>
+        <a class="reference-link" href="/privacy.html" target="_blank" rel="noopener">Privacy</a>
+        <a class="reference-link" href="/terms.html" target="_blank" rel="noopener">Terms</a>
+        <a class="creator-credit" href="https://x.com/0yield" target="_blank" rel="noopener noreferrer">made by <strong>@0yield</strong> <span aria-hidden="true">↗</span></a>
+      </footer>
+    </section>
+
+    <section id="settings" class="vgui-window client-page" hidden role="region" aria-labelledby="settings-title">
+      <header class="window-title"><span id="settings-title">Settings — Surfd</span><button id="close-options" aria-label="Close settings">×</button></header>
+      <div class="tabs" role="tablist" aria-label="Settings categories">
+        <button id="settings-tab-controls" class="selected" data-tab="controls" role="tab" aria-selected="true" aria-controls="settings-controls">Controls</button>
+        <button id="settings-tab-mouse" data-tab="mouse" role="tab" aria-selected="false" aria-controls="settings-mouse" tabindex="-1">Mouse &amp; view</button>
+        <button id="settings-tab-gameplay" data-tab="gameplay" role="tab" aria-selected="false" aria-controls="settings-gameplay" tabindex="-1">Gameplay</button>
+        <button id="settings-tab-display" data-tab="display" role="tab" aria-selected="false" aria-controls="settings-display" tabindex="-1">Video &amp; audio</button>
+        <button id="settings-tab-hud" data-tab="hud" role="tab" aria-selected="false" aria-controls="settings-hud" tabindex="-1">HUD</button>
+        <button id="settings-tab-community" data-tab="community" role="tab" aria-selected="false" aria-controls="settings-community" tabindex="-1">Community</button>
+      </div>
+      <div id="settings-controls" class="tab-page" data-page="controls" role="tabpanel" aria-labelledby="settings-tab-controls">
+        <h2 class="settings-heading">Keyboard &amp; mouse bindings</h2>
+        <p class="setting-intro">Bind keys, mouse buttons, or the scroll wheel. You can use more than one binding for each action.</p>
+        <div class="binding-header"><span>Action</span><span>Bindings</span></div>
+        <div id="bindings" class="bindings"></div>
+        <p id="binding-help" role="status">Choose a binding, then press a key or scroll. Escape cancels.</p>
+        <button id="reset-bindings" class="button-secondary">Reset controls</button>
+        <details id="turn-options" class="settings-advanced">
+          <summary><span class="turn-summary-copy"><strong>Turn binds</strong><span>Turn keys and yaw-speed presets</span></span><span id="turn-status" class="turn-status">Off</span><span class="turn-expand" aria-hidden="true">›</span></summary>
+          <div class="turn-panel">
+            <label class="check"><input id="turns-enabled" type="checkbox" aria-controls="turn-settings" aria-expanded="false"> Enable turn binds</label>
+            <div id="turn-settings" hidden>
+              <p class="setting-intro">Hold a bound key to turn. Mouse look still works. All turn controls start unbound.</p>
+              <div id="turn-bindings" class="bindings turn-bindings"></div>
+              <div class="yaw-heading"><h3 id="yaw-speeds-title">Yaw speeds</h3><span>°/s</span></div>
+              <div id="yaw-presets" role="radiogroup" aria-labelledby="yaw-speeds-title"></div>
+              <div class="yaw-add"><label class="visually-hidden" for="new-yaw-speed">New yaw speed</label><input id="new-yaw-speed" type="number" min="-100000" max="100000" step="any" placeholder="e.g. 105"><button id="add-yaw-speed" type="button">+ Add speed</button><span id="yaw-preset-count"></span></div>
+              <p id="yaw-speed-help" role="status">Cycle follows the order above and returns to the first speed.</p>
+              <p class="setting-note">Select a speed to use it. Bind “Cycle yaw speed” to switch while surfing. CSS cl_yawspeed defaults to 210. Negative values reverse the direction.</p>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div id="settings-mouse" class="tab-page" data-page="mouse" hidden role="tabpanel" aria-labelledby="settings-tab-mouse">
+        <h2 class="settings-heading">Mouse &amp; camera</h2>
+        <label class="setting-label" for="sensitivity">Mouse sensitivity <input id="sensitivity-number" aria-label="Mouse sensitivity value" type="number" min="0" max="20" step="any" value="2.5" aria-describedby="sensitivity-note"></label>
+        <input id="sensitivity" type="range" min="0" max="20" step="0.01" value="2.5"><output id="sensitivity-value" hidden>2.5</output>
+        <p id="sensitivity-note" class="setting-note">Type an exact value, including 0.001 or 0.00000001. Zero disables mouse look. Uses the CSS scale: 0.022° × sensitivity per mouse count. Raw input is requested; smoothing is off.</p>
+        <label class="setting-label" for="fov">Field of view <output id="fov-value">90°</output></label>
+        <input id="fov" type="range" min="75" max="120" step="1" value="90">
+        <p class="setting-note">Source FOV at 4:3. Wider screens show more to the sides.</p>
+        <hr>
+        <label class="check"><input id="interpolate" type="checkbox" checked aria-describedby="interpolate-note"> Interpolate camera position <span class="setting-inline-note">Recommended</span></label>
+        <p id="interpolate-note" class="setting-note">Smoother movement between physics ticks, with about 15 ms of visual delay. Mouse look stays immediate. Allowed on leaderboards with either setting.</p>
+        <p id="raw-status" class="setting-status">Click Play to capture the mouse.</p>
+      </div>
+      <div id="settings-gameplay" class="tab-page" data-page="gameplay" hidden role="tabpanel" aria-labelledby="settings-tab-gameplay">
+        <h2 class="settings-heading">Movement rules</h2>
+        <label class="check"><input id="autobhop" type="checkbox" checked> Auto bunnyhop <span class="setting-inline-note">Hold jump</span></label>
+        <label class="check"><input id="prehop" type="checkbox"> Unrestricted start speed <span class="setting-inline-note">Unranked</span></label>
+        <p class="setting-note">Leaderboard runs use auto bunnyhop with capped starting speed. You can jump in the start zone, but excess horizontal speed is reduced when you leave: 325 units/s grounded, 350 airborne. Unrestricted starts keep separate local bests and never enter the leaderboard. Changing a rule restarts your run.</p>
+        <hr>
+        <h2 class="settings-heading">Practice</h2>
+        <label class="check"><input id="practice-setting" type="checkbox"> Practice mode <span class="setting-inline-note">No records</span></label>
+        <div class="practice-buttons"><button id="save">Save position</button><button id="load">Load position</button></div>
+        <p class="setting-note">Save a tricky approach and try it again. Restoring a position keeps the run in practice mode.</p>
+        <details class="settings-advanced"><summary>Replays &amp; diagnostics</summary><div><label class="check"><input id="diagnostic-setting" type="checkbox"> Show movement diagnostics</label><button id="export">Download command replay</button><p class="setting-note">Movement and view commands only. This is not a video recording.</p></div></details>
+      </div>
+      <div id="settings-display" class="tab-page" data-page="display" hidden role="tabpanel" aria-labelledby="settings-tab-display">
+        <h2 class="settings-heading">Video</h2>
+        <label class="setting-label" for="quality">Rendering quality</label>
+        <select id="quality"><option value="balanced">Balanced — recommended</option><option value="native">Native — sharper on high-DPI screens</option><option value="performance">Performance — lower resolution</option></select>
+        <p class="setting-note">Adjusts resolution and texture filtering. Movement and mouse response stay the same.</p>
+        <label class="check"><input id="show-fps" type="checkbox"> Show frame rate</label>
+        <hr>
+        <h2 class="settings-heading">Audio</h2>
+        <label class="check"><input id="ambience" type="checkbox" checked> Environmental ambience</label>
+        <label class="setting-label" for="volume">Volume <output id="volume-value">14%</output></label>
+        <input id="volume" type="range" min="0" max="100" value="14">
+        <p class="setting-note">Quiet wind and air. Fades out when paused.</p>
+      </div>
+      <div id="settings-hud" class="tab-page" data-page="hud" hidden role="tabpanel" aria-labelledby="settings-tab-hud">
+        <h2 class="settings-heading">Keep your eyes on the ramp</h2>
+        <label class="check"><input id="center-speed-setting" type="checkbox"> Centre speed display</label>
+        <p class="setting-note">Moves your speed just below the crosshair, like a classic surf server. Your timer stays at the bottom.</p>
+        <label class="check"><input id="checkpoint-comparisons-setting" type="checkbox" checked> Checkpoint time comparisons</label>
+        <p class="setting-note">See time gained or lost against your personal best and the top verified run. Minus means ahead; plus means behind. Comparisons use the same map and movement rules. No reference time? You’ll see a dash.</p>
+        <div class="hud-setting-preview" aria-label="Example HUD"><strong>1,248 <small>units/s</small></strong><span>CHECKPOINT 2 · 00:24.381</span><div><span>PB <b class="split-ahead">−0.428</b></span><span>WR <b class="split-behind">+0.215</b></span></div><small>Example — your run is faster than your PB, but behind the record.</small></div>
+      </div>
+      <div id="settings-community" class="tab-page" data-page="community" hidden role="tabpanel" aria-labelledby="settings-tab-community"></div>
+      <footer class="window-footer"><span class="footer-note">Changes are saved automatically</span><button id="options-done" class="button-primary">Done</button></footer>
+    </section>
+
+    <section id="map-picker" class="lobby-browser vgui-window" aria-labelledby="maps-title">
+      <header class="window-title"><span id="maps-title">Play — Surfd</span><span class="window-badge">SURF CLIENT / 01</span></header>
+      <div class="tabs play-tabs" role="tablist" aria-label="Play mode"><button id="play-tab-online" role="tab" aria-selected="false" aria-controls="play-online" tabindex="-1">Online</button><button id="play-tab-solo" role="tab" class="selected" aria-selected="true" aria-controls="play-solo">Solo</button></div>
+      <section id="play-solo" class="play-page" role="tabpanel" aria-labelledby="play-tab-solo">
+        <div class="browser-toolbar"><label class="search-box"><span>Find map</span><input id="map-search" type="search" placeholder="Name or author…" autocomplete="off"></label><label class="sort-box">Sort <select id="map-sort"><option value="collection">Collection</option><option value="name">Name</option><option value="tier">Difficulty</option><option value="type">Course type</option></select></label></div>
+        <div class="course-browser"><div class="course-directory"><div class="directory-heading"><span>Map</span><span>Type</span><span>Tier</span></div><div id="map-list" class="lobby-map-list" role="group" aria-label="Choose a surf map"></div><p id="map-empty" hidden>No maps match that search.</p></div>
+          <aside id="featured-map" class="course-detail" aria-label="Selected map"><img id="lobby-preview" src="previews/boreas.jpg" alt="Snowy ramps on surf_boreas" width="640" height="360" fetchpriority="high"><div class="detail-copy"><p class="menu-eyebrow">Selected course</p><h2 id="lobby-map-title">Boreas</h2><p id="lobby-map-credit">surf_boreas · by Syncronyze</p><p id="lobby-description">Snowy ravines, long glass ramps and high-speed transfers.</p><dl class="course-facts"><div><dt>Course</dt><dd id="lobby-checkpoints">Linear · 2 checkpoints</dd></div><div><dt>Difficulty</dt><dd id="lobby-tier">Unrated</dd></div><div><dt>Local best</dt><dd id="lobby-best">—</dd></div></dl></div></aside>
+        </div>
+        <footer class="browser-action"><div><span id="map-count">20 classic courses</span><p id="lobby-load-status" role="status">Preparing your last played map…</p></div><button id="join" class="button-primary">Join map <span aria-hidden="true">→</span></button></footer>
+      </section>
+      <section id="play-online" class="play-page" role="tabpanel" aria-labelledby="play-tab-online" hidden>
+        <div class="browser-toolbar"><div><strong>Find a server</strong><p>Join a few other surfers.</p></div><button id="servers-refresh">Refresh</button></div>
+        <div class="server-directory"><table><thead><tr><th>Server</th><th>Map</th><th>Players</th><th>Ping</th></tr></thead><tbody id="server-list"></tbody></table></div>
+        <div class="server-detail"><div><p class="menu-eyebrow">Community servers</p><h2 id="server-title">Choose a server</h2><p id="server-description">Pick a server and come surf. Choose the next map together, or stay a little longer on a favourite.</p></div><dl><div><dt>Movement</dt><dd>Normal · Auto bhop</dd></div><div><dt>Players</dt><dd>Non-colliding · Hide any time</dd></div><div><dt>Map duration</dt><dd id="server-time">30 minutes + extensions</dd></div></dl></div>
+        <footer class="browser-action"><p id="server-status" role="status">Checking servers…</p><button id="server-connect" class="button-primary" disabled>Connect <span aria-hidden="true">→</span></button></footer>
+      </section>
+      <div data-play-options></div>
+      <footer class="lobby-footer"><span>Classic surf · 66 tick</span><span>Keyboard &amp; mouse</span><button id="close-maps" hidden>Return to current run</button><a class="creator-credit" href="https://x.com/0yield" target="_blank" rel="noopener noreferrer">made by <strong>@0yield</strong> <span aria-hidden="true">↗</span></a></footer>
+    </section>
+  </div>
+
+  <div id="finish" class="screen" hidden>
+    <section class="vgui-window finish-panel" role="dialog" aria-modal="true" aria-labelledby="finish-title">
+      <header class="window-title"><span>Surfd Timer</span><span class="window-badge">Run complete</span></header>
+      <div class="finish-content">
+        <p id="finish-map-name" class="finish-map-name">surf_boreas</p>
+        <h2 id="finish-title">Map complete.</h2>
+        <div id="finish-time">00:00.000</div>
+        <p id="finish-record"></p>
+        <div id="finish-splits" aria-label="Checkpoint splits"></div>
+      </div>
+      <footer class="window-footer"><button id="finish-menu">Main menu</button><button id="again" class="button-primary">Surf again</button></footer>
+    </section>
+  </div>
+  <div id="fatal" class="vgui-window" hidden role="alert"></div>
+
+</body>
+</html>
