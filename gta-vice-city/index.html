@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<base href="https://cdn.jsdelivr.net/gh/playsurd/surd-x-3@main/gta-vice-city/">
+<script data-surd="1">(function () {
+  var W = window;
+  var unityTarget = null;
+  function tellUnity(methods, arg) {
+    var inst = W.__surdUnity || W.unityInstance || W.gameInstance;
+    if (!inst || !inst.SendMessage || !unityTarget) return;
+    for (var i = 0; i < methods.length; i++) {
+      try { arg === undefined ? inst.SendMessage(unityTarget, methods[i]) : inst.SendMessage(unityTarget, methods[i], arg); }
+      catch (e) {  }
+    }
+  }
+  if (typeof W.initPokiBridge !== 'function') {
+    W.initPokiBridge = function (name) { unityTarget = name || unityTarget; };
+  }
+  if (typeof W.commercialBreak !== 'function') {
+    W.commercialBreak = function () { setTimeout(function () { tellUnity(['CommercialBreakComplete', 'commercialBreakComplete']); }, 0); };
+  }
+  if (typeof W.rewardedBreak !== 'function') {
+    W.rewardedBreak = function () { setTimeout(function () { tellUnity(['RewardedBreakComplete', 'rewardedBreakComplete'], 'false'); }, 0); };
+  }
+  var resolved = function () { return Promise.resolve(); };
+  if (!W.PokiSDK) {
+    W.PokiSDK = {
+      init: resolved, initPokiBridge: function () {}, setDebug: function () {},
+      gameLoadingStart: function () {}, gameLoadingFinished: function () {},
+      gameLoadingProgress: function () {},
+      gameplayStart: function () {}, gameplayStop: function () {},
+      commercialBreak: resolved, rewardedBreak: function () { return Promise.resolve(false); },
+      happyTime: function () {}, customEvent: function () {}, captureError: function () {},
+      isAdBlocked: function () { return false; }, shareableURL: function () { return Promise.resolve(location.href); },
+      getURLParam: function (k) { try { return new URL(location.href).searchParams.get(k) || ''; } catch (e) { return ''; } },
+    };
+  }
+  if (!W.YaGames) {
+    var yPlayer = {
+      getName: function () { return 'player'; }, getUniqueID: function () { return 'local'; },
+      getData: function () { return Promise.resolve({}); }, setData: resolved,
+      getStats: function () { return Promise.resolve({}); }, setStats: resolved, incrementStats: resolved,
+      getMode: function () { return 'lite'; }, getPhoto: function () { return ''; },
+    };
+    var yLeaderboards = {
+      setLeaderboardScore: resolved,
+      getLeaderboardEntries: function () { return Promise.resolve({ entries: [] }); },
+      getLeaderboardPlayerEntry: function () { return Promise.reject(new Error('no entry')); },
+      getLeaderboardDescription: function () { return Promise.resolve({}); },
+    };
+    var ySdk = {
+      adv: {
+        showFullscreenAdv: function (o) { var c = o && o.callbacks; if (c && c.onClose) setTimeout(function () { c.onClose(false); }, 0); },
+        showRewardedVideo: function (o) { var c = o && o.callbacks; if (c && c.onClose) setTimeout(function () { c.onClose(); }, 0); },
+        getBannerAdvStatus: function () { return Promise.resolve({ stickyAdvIsShowing: false }); },
+      },
+      getPlayer: function () { return Promise.resolve(yPlayer); },
+      getPayments: function () { return Promise.resolve({
+        getCatalog: function () { return Promise.resolve([]); },
+        getPurchases: function () { return Promise.resolve([]); },
+        purchase: function () { return Promise.reject(new Error('payments unavailable')); },
+        consumePurchase: resolved,
+      }); },
+      getFlags: function () { return Promise.resolve({}); },
+      getStorage: function () { return Promise.resolve(window.localStorage); },
+      clipboard: { writeText: resolved },
+      shortcut: { canShowPrompt: function () { return Promise.resolve({ canShow: false }); }, showPrompt: function () { return Promise.resolve({ outcome: 'rejected' }); } },
+      feedback: { canReview: function () { return Promise.resolve({ value: false }); }, requestReview: function () { return Promise.resolve({ feedbackSent: false }); } },
+      getLeaderboards: function () { return Promise.resolve(yLeaderboards); },
+      features: { LoadingAPI: { ready: function () {} } },
+      screen: { fullscreen: { request: resolved, exit: resolved } },
+      isAvailableMethod: function () { return Promise.resolve(false); },
+      environment: { i18n: { lang: 'en' }, app: { id: 'local' } },
+      deviceInfo: { isDesktop: function () { return true; }, isMobile: function () { return false; },
+                    isTablet: function () { return false; }, isTV: function () { return false; },
+                    type: 'desktop' },
+    };
+    W.YaGames = { init: function () { return Promise.resolve(ySdk); } };
+    W.ysdk = ySdk;
+  }
+  if (!W.ytgame) {
+    var ytNoop = function () {};
+    W.ytgame = {
+      IN_PLAYABLES_ENV: false,
+      game: { firstFrameReady: ytNoop, gameReady: ytNoop, loadData: function () { return Promise.resolve(''); },
+              saveData: function () { return Promise.resolve(); }, isPaused: function () { return false; } },
+      system: { getLanguage: function () { return 'en'; }, isAudioEnabled: function () { return true; },
+                onAudioEnabledChange: ytNoop, onPause: ytNoop, onResume: ytNoop },
+      health: { logError: ytNoop, logWarning: ytNoop },
+      engagement: { sendScore: function () { return Promise.resolve(); } },
+      ads: { requestInterstitialAd: function () { return Promise.resolve(); } },
+    };
+  }
+  if (typeof document !== 'undefined' && document.xURL === undefined) {
+    try { document.xURL = 'https://poki.com/'; } catch (e) {  }
+  }
+  if (!W.YYGGames) {
+    var yyAds = function (o) {
+      o = o || {};
+      var step = function (fn) { if (typeof fn === 'function') setTimeout(fn, 0); };
+      step(o.beforeShowAd);
+      setTimeout(function () { step(o.afterShowAd); step(o.rewardDismissed); }, 1);
+    };
+    W.YYGGames = {
+      startup: function (o) { if (o && typeof o.complete === 'function') setTimeout(o.complete, 0); },
+      startupByYad: function () {}, showSplash: function () {},
+      showInterstitial: yyAds, showReward: yyAds,
+      canShowReward: function () { return false; },
+      getAdPlatformType: function () { return 'none'; },
+      getForgames: function () { return Promise.resolve([]); },
+      navigate: function () {},
+      onVisibilitychange: function () {},
+    };
+  }
+  if (!W.GamePix) {
+    W.GamePix = { init: function () {}, ping: function () {}, gameLoadingStart: function () {}, gameLoadingFinished: function () {},
+                  interstitialAd: resolved, rewardAd: function () { return Promise.resolve(false); }, happyMoment: function () {} };
+  }
+  if (!W.CrazyGames) {
+    var noop = function () {};
+    W.CrazyGames = { SDK: {
+      init: resolved, game: { gameplayStart: noop, gameplayStop: noop, loadingStart: noop, loadingStop: noop, happytime: noop },
+      ad: { requestAd: function (t, cb) { if (cb && cb.adFinished) cb.adFinished(); }, hasAdblock: function () { return Promise.resolve(false); } },
+      user: { getUser: function () { return Promise.resolve(null); } },
+      banner: { requestBanner: resolved, clearAllBanners: noop },
+    } };
+  }
+})();
+if (typeof window !== 'undefined') {
+  if (typeof window.environmentData === 'undefined') window.environmentData = 'NO_DATA';
+  if (typeof window.nowFullAdOpen === 'undefined') window.nowFullAdOpen = false;
+}
+try {
+  var parentWin = window.parent;
+  if (parentWin && parentWin !== window) {
+    if (typeof parentWin.maeExportApis_ !== 'function') parentWin.maeExportApis_ = function () {};
+  }
+} catch (e) {  }
+if(typeof window.UnityProgress!=="function")window.UnityProgress=function(){this.SetMessage=function(){};this.SetProgress=function(){};this.Clear=function(){};};
+window.alert=function(){};window.confirm=function(){return false;};window.prompt=function(){return null;};
+(function(){
+    /* DEAD HOSTS, blocked for a different reason than the ad networks below.
+     *
+     * Sixteen files across the catalogue live on hosts that no longer answer. Vendoring could not
+     * save them (nothing to download, and none are in the Wayback Machine), but every one turned
+     * out to be inessential once looked at: an ad SWF (bbplayer), a portal logo (kizi), portal
+     * SDKs (gamemix, gmsdk), a sitelock check (pegasgames' "wheely7sec.swf" — wheely-7 ships its
+     * real game in _vendor), cosmetic images, and duplicates of files the game already has
+     * locally (both spongebob ports ship their own flambe.js). Left alone, each one is a request
+     * that hangs until it times out; blocked, it fails instantly and the game gets on with it. */
+    var DEAD = /(bbplayer\.net|cdn0\.kizi\.com|gmapi\.gamemix\.com|r3tq6l1\/gmsdk|candystand\.com|eags\.us|iep-esy\.ir|pegasgames\.com|ngames365\.github\.io|yurivish\.com|chicken\.royalredeemerlutheranschool\.org|marketjs-us\/en\/patch|cdn\.jsdelivr\.net\/discount\.json)/i;
+    var BAD = /(doubleclick\.net|googlesyndication\.com|googleadservices\.com|googleads\.g\.doubleclick\.net|adtrafficquality\.google|2mdn\.net|imasdk\.googleapis\.com|adsbygoogle|google-analytics\.com|googletagmanager\.com|gstatic\.com\/firebasejs|gamemonetize\.com|fliplineads\.com|cpmstar\.com|ngads\.com|adinplay\.com|mochibot\.com|mochiads\.com|gamedistribution\.com|msgrt\.gamedistribution\.com|azerioncircle\.com|gamemonkey\.org|gameanalytics\.com|gamedock\.io|enjoy4fun\.com|gamebridge\.games|gamearter\.com|poki\.io|famobi\.com|softgames\.de|analytics\.shapez\.io|scorecardresearch\.com|moatads\.com|amazon-adsystem\.com|criteo|pubmatic|rubiconproject|adnxs\.com|casalemedia|smartadserver|taboola|outbrain|hotjar\.com|mixpanel|clarity\.ms|rudderlabs\.com|analytics\.tiktok\.com|connect\.facebook\.net|yandex\.ru\/metrika|mc\.yandex|cloud\.unity3d\.com|pushalert\.co|quizvana\.com|serviceclic\.com|atpnd\.com|r9x\.in|adsgram\.ai)/i;
+    function bad(u){ try { var t = String(u); return BAD.test(t) || DEAD.test(t); } catch(e){ return false; } }
+    /* HOST-ABSOLUTE PATHS: "/version.json", "/audio/x.flac".
+     *
+     * A leading slash ignores <base> completely and resolves against the ORIGIN, which for us
+     * is the site (or an opaque blob origin) and never holds game assets — so every such
+     * request is a guaranteed 404. 2048-merge-run asked for /version.json, /fileconfig.json
+     * and every one of its scene files this way and showed a black screen with nothing but
+     * "Script error." to go on; a-dark-room does the same with /audio/*.flac.
+     *
+     * Since no host-absolute path can ever be correct here, point them all at the game's own
+     * base. This is a rewrite rather than a refusal: the files exist, just one level up.
+     * Protocol-relative "//host/x" is a different thing (a real remote host) and is left to
+     * the denylist above. */
+    /* Read the base LAZILY. This guard is deliberately installed before the manifest script
+     * (that order is load-bearing — moving SURD_GAME ahead of the prelude once stopped this
+     * very game from rendering at all), so at install time there is no base to capture. */
+    function gbase(){ try { return (window.SURD_GAME && window.SURD_GAME.base) || ''; } catch(e){ return ''; } }
+    /* A file we downloaded from a third-party host and now ship ourselves. Checked before
+     * anything else: this is what stops a game depending on someone else's server staying up,
+     * and it works even when the game builds the URL at runtime. */
+    function vendored(u){
+      try {
+        var M = window.SURD_GAME, map = M && M.ext;
+        if (!map || typeof u !== 'string') return null;
+        var q = u.split('#')[0];
+        if (map[q]) return String(M.base).replace(/\/?$/, '/') + map[q];
+        var noq = q.split('?')[0];
+        if (map[noq]) return String(M.base).replace(/\/?$/, '/') + map[noq];
+        return null;
+      } catch(e){ return null; }
+    }
+    function rebase(u){
+      try {
+        if (typeof u !== 'string' || !u) return u;
+        var v = vendored(u); if (v) return v;
+        var B = gbase(); if (!B) return u;
+        B = B.replace(/\/?$/, '/');
+        if (u.indexOf(B) === 0) return u;                        // already where it belongs
+        /* Never touch OUR OWN plumbing. The runtime and its adapters live at a different path
+         * (and in production a different origin), and rebasing them points the loader at the
+         * game's asset directory, where no adapter exists. */
+        var RT = '';
+        try { RT = (window.SURD_GAME && window.SURD_GAME.runtime) || ''; } catch(e){}
+        if (RT && u.indexOf(RT) === 0) return u;
+        if (u.indexOf('/_rt/') >= 0 || u.indexOf('surd-runtime') >= 0) return u;
+        /* A bare "/" (or "/?x") has NO path to rebase, and rewriting it produced a request for
+         * the base DIRECTORY, which 404s and shows up in the log as
+         * "failed to load .../suika-game/". Leave those alone. */
+        if (u.charAt(0) === '/' && u.charAt(1) !== '/') {
+          var rest = u.slice(1);
+          return rest && rest.charAt(0) !== '?' && rest.charAt(0) !== '#' ? B + rest : u;
+        }
+        /* An engine that builds its own absolute URLs from location, rather than letting the
+         * browser resolve a relative path, lands on the SITE origin — which holds no game
+         * assets either. 2048-merge-run (LayaAir) asks for "<origin>/version.json" outright,
+         * so matching only a leading slash was not enough. Our origin is never a legitimate
+         * place for a game to fetch from, so the same redirect applies. */
+        var o = location.origin;
+        if (o && o !== 'null' && u.indexOf(o + '/') === 0) return B + u.slice(o.length + 1);
+        return u;
+      } catch(e){ return u; }
+    }
+    var of = window.fetch;
+    if (of) window.fetch = function(i, o){
+      var u = (i && i.url) ? i.url : i;
+      /* 204 forbids a body, and passing one throws in Firefox ("Response body is given with a
+       * null body status") — INSIDE the game's own fetch call, which is exactly what this branch
+       * exists to protect (papa-burgeria). Status 200 with an empty body is accepted everywhere
+       * and reads to the caller as "nothing here", which is what we want to say. */
+      if (bad(u)) return Promise.resolve(new Response('', {status:200}));
+      if (typeof i === 'string') { var r = rebase(i); if (r !== i) return of.call(this, r, o); }
+      return of.apply(this, arguments);
+    };
+    var oo = window.XMLHttpRequest && window.XMLHttpRequest.prototype.open;
+    if (oo) window.XMLHttpRequest.prototype.open = function(m, u){
+      if (bad(u)) { arguments[1] = 'data:text/plain,'; }
+      else if (typeof u === 'string') { arguments[1] = rebase(u); }
+      return oo.apply(this, arguments);
+    };
+    if (navigator.sendBeacon) { var ob = navigator.sendBeacon.bind(navigator);
+      navigator.sendBeacon = function(u, d){ return bad(u) ? true : ob(u, d); }; }
+    var OW = window.WebSocket;
+    if (OW) window.WebSocket = function(u, p){
+      if (bad(u)) u = 'ws://127.0.0.1:1';
+      return p === undefined ? new OW(u) : new OW(u, p);
+    };
+    /* setAttribute('src', …) bypasses the property setter patched below, and several ad
+     * tags use exactly that form (moto-x3m still reached googlesyndication until this). */
+    try {
+      var osa = Element.prototype.setAttribute;
+      Element.prototype.setAttribute = function(n, v){
+        if (n && /^(src|href|data)$/i.test(n)) {
+          if (bad(v)) return;
+          /* Same host-absolute problem, reached through an attribute: an <img> or <audio>
+           * given "/audio/x.flac" resolves against the origin and 404s. */
+          if (typeof v === 'string') arguments[1] = rebase(v);
+        }
+        return osa.apply(this, arguments);
+      };
+    } catch(e){}
+    /* Element src= is how most ad tags actually load. */
+    try {
+      ['HTMLImageElement','HTMLScriptElement','HTMLIFrameElement','HTMLAudioElement','HTMLVideoElement','HTMLSourceElement'].forEach(function(k){
+        var P = window[k] && window[k].prototype; if (!P) return;
+        var d = Object.getOwnPropertyDescriptor(P, 'src'); if (!d || !d.set) return;
+        Object.defineProperty(P, 'src', {
+          configurable: true, enumerable: d.enumerable, get: d.get,
+          set: function(v){
+            if (bad(v)) return;
+            var t = typeof v === 'string' ? rebase(v) : v;
+            /* CORS ON OUR OWN ASSETS — not politeness, a hard requirement.
+             *
+             * WebGL refuses to upload a texture from an image fetched cross-origin without
+             * CORS: the canvas would be tainted, so it throws "SecurityError: The operation is
+             * insecure" inside uploadTexture and the game shows a grey screen with everything
+             * apparently loaded (stair-race-3d, PlayCanvas). Our assets live on another origin
+             * by definition — the page is a blob, the files are on the CDN — so every engine
+             * that loads textures through <img> hits this.
+             *
+             * Scoped to OUR hosts and to relative URLs (which resolve against our base through
+             * <base>): jsDelivr and raw both send Access-Control-Allow-Origin: *, so requesting
+             * CORS always succeeds there. Setting it on a third-party host that does NOT send
+             * the header would turn a working image into a failed one, so those are left alone.
+             *
+             * Scripts get the same treatment for a different reason: without crossorigin an
+             * error inside an engine-injected script arrives as the bare, useless
+             * "Script error." with no file or line (2048-merge-run's laya.core.min.js). */
+            try {
+              var ours = typeof t === 'string' && (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(t)
+                || t.indexOf(gbase()) === 0
+                || /^https:\/\/(cdn\.jsdelivr\.net|raw\.githubusercontent\.com)\//.test(t));
+              if (ours && !this.crossOrigin) this.crossOrigin = 'anonymous';
+            } catch(e){}
+            return d.set.call(this, t);
+          }
+        });
+      });
+    } catch(e){}
+  })();</script>
+<script data-surd="1">window.SURD_GAME={"id":"gta-vice-city","engine":"generic","base":"https://cdn.jsdelivr.net/gh/playsurd/surd-x-3@main/gta-vice-city/","runtime":"https://cdn.jsdelivr.net/gh/playsurd/surd-runtime@main/va429808db7/","files":{},"config":{},"split":[{"p":"vc-assets/local/audio/emotion.mp3","u":["vc-assets/local/audio/emotion.mp3.sp0","vc-assets/local/audio/emotion.mp3.sp1","vc-assets/local/audio/emotion.mp3.sp2"],"b":56749245,"m":"audio/mpeg","v":1},{"p":"vc-assets/local/audio/espant.mp3","u":["vc-assets/local/audio/espant.mp3.sp0","vc-assets/local/audio/espant.mp3.sp1","vc-assets/local/audio/espant.mp3.sp2"],"b":59171736,"m":"audio/mpeg","v":1},{"p":"vc-assets/local/audio/fever.mp3","u":["vc-assets/local/audio/fever.mp3.sp0","vc-assets/local/audio/fever.mp3.sp1","vc-assets/local/audio/fever.mp3.sp2"],"b":60691018,"m":"audio/mpeg","v":1},{"p":"vc-assets/local/audio/flash.mp3","u":["vc-assets/local/audio/flash.mp3.sp0","vc-assets/local/audio/flash.mp3.sp1","vc-assets/local/audio/flash.mp3.sp2"],"b":57405441,"m":"audio/mpeg","v":1},{"p":"vc-assets/local/audio/kchat.mp3","u":["vc-assets/local/audio/kchat.mp3.sp0","vc-assets/local/audio/kchat.mp3.sp1","vc-assets/local/audio/kchat.mp3.sp2"],"b":49885345,"m":"audio/mpeg","v":1},{"p":"vc-assets/local/audio/vcpr.mp3","u":["vc-assets/local/audio/vcpr.mp3.sp0","vc-assets/local/audio/vcpr.mp3.sp1"],"b":41474017,"m":"audio/mpeg","v":1},{"p":"vc-assets/local/audio/vrock.mp3","u":["vc-assets/local/audio/vrock.mp3.sp0","vc-assets/local/audio/vrock.mp3.sp1","vc-assets/local/audio/vrock.mp3.sp2","vc-assets/local/audio/vrock.mp3.sp3"],"b":74307710,"m":"audio/mpeg","v":1},{"p":"vc-assets/local/audio/wave.mp3","u":["vc-assets/local/audio/wave.mp3.sp0","vc-assets/local/audio/wave.mp3.sp1","vc-assets/local/audio/wave.mp3.sp2","vc-assets/local/audio/wave.mp3.sp3"],"b":63468356,"m":"audio/mpeg","v":1},{"p":"vc-assets/local/audio/wild.mp3","u":["vc-assets/local/audio/wild.mp3.sp0","vc-assets/local/audio/wild.mp3.sp1","vc-assets/local/audio/wild.mp3.sp2","vc-assets/local/audio/wild.mp3.sp3"],"b":65715305,"m":"audio/mpeg","v":1},{"p":"vcsky/vc-sky-en-v6.data.00","u":["vcsky/vc-sky-en-v6.data.00.sp0","vcsky/vc-sky-en-v6.data.00.sp1"],"b":20971520,"m":"application/octet-stream","v":1,"pf":1},{"p":"vcsky/vc-sky-en-v6.data.01","u":["vcsky/vc-sky-en-v6.data.01.sp0","vcsky/vc-sky-en-v6.data.01.sp1"],"b":20971520,"m":"application/octet-stream","v":1,"pf":1},{"p":"vcsky/vc-sky-en-v6.data.02","u":["vcsky/vc-sky-en-v6.data.02.sp0","vcsky/vc-sky-en-v6.data.02.sp1"],"b":20971520,"m":"application/octet-stream","v":1,"pf":1},{"p":"vcsky/vc-sky-en-v6.data.03","u":["vcsky/vc-sky-en-v6.data.03.sp0","vcsky/vc-sky-en-v6.data.03.sp1"],"b":20971520,"m":"application/octet-stream","v":1,"pf":1},{"p":"vcsky/vc-sky-en-v6.data.04","u":["vcsky/vc-sky-en-v6.data.04.sp0","vcsky/vc-sky-en-v6.data.04.sp1"],"b":20971520,"m":"application/octet-stream","v":1,"pf":1},{"p":"vcsky/vc-sky-en-v6.data.05","u":["vcsky/vc-sky-en-v6.data.05.sp0","vcsky/vc-sky-en-v6.data.05.sp1"],"b":20971520,"m":"application/octet-stream","v":1,"pf":1},{"p":"vcsky/vc-sky-en-v6.data.06","u":["vcsky/vc-sky-en-v6.data.06"],"b":9525991,"m":"application/octet-stream","pf":1},{"p":"vcsky/vc-sky-en-v6.wasm","u":["vcsky/vc-sky-en-v6.wasm"],"b":7625877,"m":"application/wasm","pf":1},{"p":"index.wasm","u":["index.wasm"],"b":7625729,"m":"application/wasm","pf":1}]};</script>
+<script data-surd="1">(function () {
+  var M = window.SURD_GAME;
+  var table = M && M.split;
+  if (!table || !table.length) return;
+  var base = String(M.base || '').replace(/\/?$/, '/');
+  var byPath = {};
+  var i;
+  for (i = 0; i < table.length; i++) byPath[table[i].p] = table[i];
+  var blobs = {};
+  var urlOf = {};
+  var pending = {};
+  function partUrls(e) {
+    var out = [];
+    for (var k = 0; k < e.u.length; k++) out.push(base + e.u[k]);
+    return out;
+  }
+  function match(url) {
+    if (typeof url !== 'string') {
+      if (!url || typeof url.url !== 'string') return null;
+      url = url.url;
+    }
+    var q = url.split('#')[0].split('?')[0];
+    try { q = decodeURIComponent(q); } catch (e) {}
+    q = q.replace(/^\.\//, '');
+    try {
+      var ext = M && M.ext;
+      if (ext && ext[q]) q = ext[q];
+    } catch (e) {}
+    var hit = exact(q);
+    return hit || virtualPart(q);
+  }
+  function exact(q) {
+    for (var p in byPath) {
+      if (q === p || q === base + p) return byPath[p];
+      if (q.length > p.length && q.slice(-(p.length + 1)) === '/' + p) return byPath[p];
+    }
+    return null;
+  }
+  var firstIdx = {};
+  var EMPTY = { p: ' empty', u: [], b: 0, m: 'application/octet-stream' };
+  function virtualPart(q) {
+    var m = q.match(/^(.*)\.part(\d+)$/i);
+    if (!m) return null;
+    var e = exact(m[1]);
+    if (!e || !e.v) return null;
+    var n = +m[2];
+    if (!(e.p in firstIdx)) firstIdx[e.p] = n;
+    return n === firstIdx[e.p] ? e : EMPTY;
+  }
+  function finish(e, parts) {
+    var blob = new Blob(parts, { type: e.m || 'application/octet-stream' });
+    if (e.b && blob.size !== e.b) throw new Error('surd: ' + e.p + ' reassembled to ' + blob.size + ', expected ' + e.b);
+    var u = URL.createObjectURL(blob);
+    blobs[u] = blob; urlOf[e.p] = u;
+    return u;
+  }
+  function mirrorUrl(url) {
+    var m = /^https:\/\/cdn\.jsdelivr\.net\/gh\/([^/]+)\/([^@/]+)@([^/]+)\/(.*)$/.exec(url || '');
+    return m ? 'https://raw.githubusercontent.com/' + m[1] + '/' + m[2] + '/' + m[3] + '/' + m[4] : null;
+  }
+  var TRANSIENT = { 403: 1, 408: 1, 425: 1, 429: 1, 500: 1, 502: 1, 503: 1, 504: 1, 522: 1 };
+  function fetchPart(url, attempt) {
+    attempt = attempt || 1;
+    var alt = mirrorUrl(url);
+    var target = (alt && attempt % 2 === 0) ? alt : url;
+    return nativeFetch(target).then(function (r) {
+      if (r.ok) return r.blob();
+      var e = new Error('surd: ' + r.status + ' on ' + target);
+      e.status = r.status;
+      throw e;
+    })['catch'](function (err) {
+      var retryable = !err.status || TRANSIENT[err.status];
+      if (attempt >= 4 || (!retryable && attempt > 1)) throw err;
+      return new Promise(function (r) { setTimeout(r, Math.min(8000, 400 * attempt * attempt)); })
+        .then(function () { return fetchPart(url, attempt + 1); });
+    });
+  }
+  function assemble(e) {
+    if (urlOf[e.p]) return Promise.resolve(urlOf[e.p]);
+    if (pending[e.p]) return pending[e.p];
+    var urls = partUrls(e);
+    var got = new Array(urls.length);
+    var next = 0;
+    function lane() {
+      if (next >= urls.length) return Promise.resolve();
+      var n = next++;
+      return fetchPart(urls[n]).then(function (b) { got[n] = b; return lane(); });
+    }
+    var lanes = [];
+    for (var k = 0; k < Math.min(6, urls.length); k++) lanes.push(lane());
+    var p = Promise.all(lanes).then(function () { return finish(e, got); });
+    pending[e.p] = p;
+    return p;
+  }
+  function syncBytes(url) {
+    var x = new NativeXHR();
+    nativeOpen.call(x, 'GET', url, false);
+    if (x.overrideMimeType) x.overrideMimeType('text/plain; charset=x-user-defined');
+    nativeSend.call(x, null);
+    if (x.status && x.status !== 200 && x.status !== 0) throw new Error('surd: ' + x.status + ' on ' + url);
+    var s = x.responseText, n = s.length, a = new Uint8Array(n);
+    for (var k = 0; k < n; k++) a[k] = s.charCodeAt(k) & 0xff;
+    return a;
+  }
+  function assembleSync(e) {
+    if (urlOf[e.p]) return urlOf[e.p];
+    var urls = partUrls(e), got = [];
+    for (var k = 0; k < urls.length; k++) got.push(syncBytes(urls[k]));
+    var u = finish(e, got);
+    pending[e.p] = Promise.resolve(u);
+    return u;
+  }
+  var nativeFetch = window.fetch && window.fetch.bind(window);
+  if (nativeFetch) {
+    window.fetch = function (input, init) {
+      var e = match(typeof input === 'string' ? input : input);
+      if (!e) return nativeFetch(input, init);
+      if (init && init.method && String(init.method).toUpperCase() === 'HEAD') {
+        return Promise.resolve(new Response(null, { status: 200, headers: { 'Content-Length': String(e.b || 0) } }));
+      }
+      return assemble(e).then(function (u) { return nativeFetch(u); });
+    };
+  }
+  var NativeXHR = window.XMLHttpRequest;
+  var XP = NativeXHR.prototype;
+  var nativeOpen = XP.open, nativeSend = XP.send;
+  XP.open = function (method, url, async) {
+    var e = match(url);
+    this.__surdSplit = e || null;
+    if (e) {
+      this.__surdArgs = Array.prototype.slice.call(arguments);
+      this.__surdSync = async === false;
+      if (this.__surdSync) {
+        try { return nativeOpen.apply(this, [method, assembleSync(e), false].concat(Array.prototype.slice.call(arguments, 3))); }
+        catch (err) { this.__surdSplit = null; }
+      }
+    }
+    return nativeOpen.apply(this, arguments);
+  };
+  XP.send = function (body) {
+    var e = this.__surdSplit;
+    if (!e || this.__surdSync) return nativeSend.apply(this, arguments);
+    var self = this, args = this.__surdArgs;
+    assemble(e).then(function (u) {
+      args[1] = u;
+      nativeOpen.apply(self, args);
+      nativeSend.call(self, body);
+    })['catch'](function (err) {
+      try { if (self.onerror) self.onerror({ target: self, message: String(err && err.message || err) }); } catch (x) {}
+    });
+  };
+  function script(path) {
+    var e = byPath[path] || match(path);
+    if (!e) { throw new Error('surd: no split entry for script ' + path); }
+    var urls = partUrls(e), chunks = [], total = 0, k;
+    for (k = 0; k < urls.length; k++) { chunks.push(syncBytes(urls[k])); total += chunks[k].length; }
+    var all = new Uint8Array(total), at = 0;
+    for (k = 0; k < chunks.length; k++) { all.set(chunks[k], at); at += chunks[k].length; }
+    if (e.b && total !== e.b) throw new Error('surd: ' + e.p + ' reassembled to ' + total + ', expected ' + e.b);
+    var code = new TextDecoder('utf-8').decode(all);
+    (0, eval)(code + '\n//# sourceURL=' + base + e.p);
+  }
+  window.SURD_SPLIT = { blobs: blobs, match: match, assemble: assemble, script: script };
+  var pf = [];
+  for (i = 0; i < table.length; i++) if (table[i].pf) pf.push(table[i]);
+  if (pf.length) {
+    var st = { total: pf.length, done: 0, bytes: 0, doneBytes: 0, failed: 0 };
+    for (i = 0; i < pf.length; i++) st.bytes += pf[i].b || 0;
+    window.SURD_PREFETCH = st;
+    var next = 0, LANES = 2;
+    var pump = function () {
+      if (next >= pf.length) return;
+      var e = pf[next++];
+      assemble(e)['catch'](function () { st.failed++; })
+        .then(function () { st.done++; st.doneBytes += e.b || 0; pump(); });
+    };
+    for (i = 0; i < LANES && i < pf.length; i++) pump();
+  }
+})();</script>
+<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/gh/playsurd/surd-runtime@main/va429808db7/runtime.js"></script>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GTA: Vice City</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#eee;font:14px/1.4 system-ui,sans-serif;overflow:hidden}
+#canvas{position:fixed;inset:0;width:100vw;height:100vh;display:block;outline:none;background:#000}
+.start-container{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(circle at 50% 40%,#2a1238,#07030b 70%);z-index:5;transition:opacity .35s}
+.start-container.is-leaving{opacity:0}.start-container.is-gone{display:none}
+.start-container h1{margin:0;font:800 44px/1 system-ui,sans-serif;letter-spacing:.04em;color:#ff5fa8;text-shadow:0 0 18px #ff2f8c}
+.start-container p{margin:0;color:#bba;max-width:420px;text-align:center}
+#click-to-play-button{font:700 18px system-ui,sans-serif;padding:12px 34px;border:0;border-radius:6px;background:#ff2f8c;color:#fff;cursor:pointer}
+.intro-container{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;text-align:center;pointer-events:none}
+.intro-container[hidden]{display:none}
+#spinner{width:320px;height:6px;background:#333;border-radius:3px;overflow:hidden;margin:10px auto 0}
+#spinner[hidden]{display:none}
+.progress-bar-fill{height:100%;width:0;background:#ff2f8c;transition:width .2s}
+#status[data-state=error]{color:#ff7a7a}
+#loader-subtext{color:#998;font-size:12px;margin-top:6px}
+#game-hud-bar,.touch-control{display:none}
+</style>
+</head>
+<body>
+<canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+<div class="start-container">
+  <h1>VICE CITY</h1>
+  <p>Grand Theft Auto: Vice City (reVC WebAssembly build). Click to load about 130 MB of game data; radio and models stream while you play.</p>
+  <button id="click-to-play-button" type="button">Play</button>
+</div>
+<div class="intro-container" hidden>
+  <div id="status">Loading…</div>
+  <div id="spinner" hidden><div class="progress-bar-fill"></div></div>
+  <div id="loader-subtext"></div>
+</div>
+<div id="game-hud-bar" hidden></div>
+<script crossorigin="anonymous" src="games/loader-ui.js"></script>
+<script crossorigin="anonymous" src="games/vice-city/GamepadEmulator.js"></script>
+<script crossorigin="anonymous" src="games/vice-city/game.js"></script>
+</body>
+</html>
